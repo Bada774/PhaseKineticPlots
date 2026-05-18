@@ -314,6 +314,7 @@ class App(QMainWindow):
         self._jac_func = None
 
         # --- build UI ---
+        self._font_size: int = 13  # current font size (px)
         self._build_ui()
 
         first = next(iter(MODELS))
@@ -603,6 +604,19 @@ class App(QMainWindow):
         theme_row.addWidget(self._theme_selector)
         cl.addLayout(theme_row)
 
+        # Font size slider
+        font_row = QHBoxLayout()
+        self._font_label = QLabel("Font size: 13px")
+        self._font_label.setFixedWidth(100)
+        font_row.addWidget(self._font_label)
+        self._font_slider = QSlider(Qt.Orientation.Horizontal)
+        self._font_slider.setRange(8, 24)
+        self._font_slider.setValue(13)
+        self._font_slider.setTickInterval(1)
+        self._font_slider.valueChanged.connect(self._on_font_size_changed)
+        font_row.addWidget(self._font_slider)
+        cl.addLayout(font_row)
+
         cl.addWidget(QLabel("Plot element colors:"))
         self._elem_swatch: dict[str, SwatchButton] = {}
         for key, label in ELEMENT_COLOR_LABELS.items():
@@ -672,7 +686,9 @@ class App(QMainWindow):
             row_lay.addWidget(field)
 
             range_lbl = QLabel(f"[{mn}, {mx}]")
-            range_lbl.setStyleSheet("font-size:10px; color:#888;")
+            range_lbl.setStyleSheet(
+                f"font-size:{max(8, self._font_size - 3)}px; color:#888;"
+            )
             row_lay.addWidget(range_lbl)
             row_lay.addStretch()
 
@@ -961,15 +977,18 @@ class App(QMainWindow):
         )
         header = (
             f"{swatch}&nbsp;"
-            f"<span style='color:{hc};font-size:13px;'>"
+            f"<span style='color:{hc};font-size:{self._font_size}px;'>"
             f"<b>{traj.label}</b></span><br>"
-            f"<span style='font-size:10px;color:{itc};opacity:0.7;'>"
+            f"<span style='font-size:{max(8, self._font_size - 3)}px;color:{itc};opacity:0.7;'>"
             + "  ".join(f"{k}={v:.4g}" for k, v in traj.params.items())
             + "</span>"
         )
 
         if not pts:
-            return header + "<br><i style='font-size:11px;'>No fixed points found.</i>"
+            return (
+                header
+                + f"<br><i style='font-size:{max(8, self._font_size - 2)}px;'>No fixed points found.</i>"
+            )
 
         rows = []
         for i, pt in enumerate(pts):
@@ -986,7 +1005,7 @@ class App(QMainWindow):
 
             rows.append(
                 f"<b>P{i+1}</b> "
-                f"<span style='font-size:11px;'>({pt[0]:.3f},&nbsp;{pt[1]:.3f})</span><br>"
+                f"<span style='font-size:{max(8, self._font_size - 2)}px;'>({pt[0]:.3f},&nbsp;{pt[1]:.3f})</span><br>"
                 f"<span style='color:{sc};'>{s}</span> "
                 f"<b>{t_type}</b> - <i>{osc}</i>"
             )
@@ -1088,6 +1107,30 @@ class App(QMainWindow):
     def _on_theme_changed(self, name: str):
         self._apply_theme(name)
 
+    def _on_font_size_changed(self, px: int):
+        self._font_size = px
+        self._font_label.setText(f"Font size: {px}px")
+        self._apply_font_size(px)
+
+    def _apply_font_size(self, px: int):
+        """Push new font size to all consumers."""
+        # Stylesheet – prepend override that cascades to all widgets
+        theme = THEMES[self._theme_name]
+        sized_qss = f"QWidget {{ font-size: {px}px; }}\n" + theme["stylesheet"]
+        QApplication.instance().setStyleSheet(sized_qss)
+
+        # Plot tick numbers and axis labels
+        self.phase.set_font_size(px)
+        self.kinetic.set_font_size(px)
+
+        # Info / stability panel
+        self._info_label.setStyleSheet(
+            f"color:{theme['info_text']};"
+            f"background-color:{theme['info_bg']};"
+            f"font-size:{px}px; padding:8px;"
+        )
+        self._refresh_analysis_panel()
+
     def _apply_theme(self, name: str):
         self._theme_name = name
         theme = THEMES[name]
@@ -1097,12 +1140,12 @@ class App(QMainWindow):
         self._info_label.setStyleSheet(
             f"color:{theme['info_text']};"
             f"background-color:{theme['info_bg']};"
-            "font-size:13px; padding:8px;"
+            f"font-size:{self._font_size}px; padding:8px;"
         )
         self._info_scroll.setStyleSheet(
             f"background-color:{theme['info_bg']}; border:none;"
         )
-        self._refresh_analysis_panel()
+        self._apply_font_size(self._font_size)
 
     def _on_elem_color_changed(self, key: str, color: str):
         self._elem_colors[key] = color

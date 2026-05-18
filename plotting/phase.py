@@ -113,7 +113,7 @@ class PhasePlot:
         self.plot.getAxis("bottom").setPen(axis_pen)
 
         font = pg.QtGui.QFont()
-        font.setPixelSize(13)
+        font.setPixelSize(13)  # default; overridden by set_font_size()
         self.plot.getAxis("left").setTickFont(font)
         self.plot.getAxis("bottom").setTickFont(font)
 
@@ -271,6 +271,22 @@ class PhasePlot:
     # Appearance
     # ------------------------------------------------------------------
 
+    def set_font_size(self, px: int):
+        """Update all text sizes on the phase plot."""
+        font = pg.QtGui.QFont()
+        font.setPixelSize(px)
+        for ax_name in ("left", "bottom"):
+            ax = self.plot.getAxis(ax_name)
+            ax.setTickFont(font)
+            # Re-apply label so size takes effect
+            ax.setLabel(
+                ax.labelText,
+                **{"color": ax.labelStyle.get("color", ""), "font-size": f"{px}px"},
+            )
+        pi = self.plot.getPlotItem()
+        pi.titleLabel.setAttr("size", f"{px}px")
+        pi.titleLabel.setText(pi.titleLabel.text)
+
     def apply_theme(self, theme: dict):
         self.plot.setBackground(theme["plot_bg"])
         axis_color = theme["axis_color"]
@@ -278,7 +294,6 @@ class PhasePlot:
 
         axis_pen = pg.mkPen(color=axis_color, width=2)
         tick_pen = pg.mkPen(color=tick_color)
-        label_css = f"color: {tick_color}; font-size: 13px;"
 
         for axis_name in ("left", "bottom"):
             axis = self.plot.getAxis(axis_name)
@@ -419,16 +434,16 @@ class PhasePlot:
             # 1% of each axis per unit of user tick-length setting.
             # At nc_tick_len=3 (intended default) → 3% of view per axis, clearly visible.
             scale = 0.01 * self._nc_tick_len
-            hl_x = vw * scale  # half-length in x data-units  (for horizontal ticks)
-            hl_y = vh * scale  # half-length in y data-units  (for vertical ticks)
+            hl_x = vw * scale  # half-length in x data-units
+            hl_y = vh * scale  # half-length in y data-units
 
             xu, yu = self._iso_u_xy
             xv, yv = self._iso_v_xy
 
-            # --- u-nullcline: horizontal ticks (du/dt=0 → flow is vertical here) ---
+            # --- u-nullcline: vertical ticks (du/dt=0 → flow is vertical here) ---
             if len(xu) > 1 and self._nc_tick_count > 0:
                 px, py, conn = self._make_nc_ticks(
-                    xu, yu, self._nc_tick_count, hl_x, hl_y, "h"
+                    xu, yu, self._nc_tick_count, hl_x, hl_y, "v"
                 )
             else:
                 px, py, conn = np.array([]), np.array([]), np.array([], dtype=bool)
@@ -442,10 +457,10 @@ class PhasePlot:
             )
             self._add(self._iso_u_ticks)
 
-            # --- v-nullcline: vertical ticks (dv/dt=0 → flow is horizontal here) ---
+            # --- v-nullcline: horizontal ticks (dv/dt=0 → flow is horizontal here) ---
             if len(xv) > 1 and self._nc_tick_count > 0:
                 px, py, conn = self._make_nc_ticks(
-                    xv, yv, self._nc_tick_count, hl_x, hl_y, "v"
+                    xv, yv, self._nc_tick_count, hl_x, hl_y, "h"
                 )
             else:
                 px, py, conn = np.array([]), np.array([]), np.array([], dtype=bool)

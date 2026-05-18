@@ -71,6 +71,21 @@ class KineticPlot:
     # Appearance
     # ------------------------------------------------------------------
 
+    def set_font_size(self, px: int):
+        """Update all text sizes on the kinetic plot."""
+        font = pg.QtGui.QFont()
+        font.setPixelSize(px)
+        for ax_name in ("left", "bottom"):
+            ax = self.plot.getAxis(ax_name)
+            ax.setTickFont(font)
+            ax.setLabel(
+                ax.labelText,
+                **{"color": ax.labelStyle.get("color", ""), "font-size": f"{px}px"},
+            )
+        pi = self.plot.getPlotItem()
+        pi.titleLabel.setAttr("size", f"{px}px")
+        pi.titleLabel.setText(pi.titleLabel.text)
+
     def apply_theme(self, theme: dict):
         self.plot.setBackground(theme["plot_bg"])
         axis_color = theme["axis_color"]
